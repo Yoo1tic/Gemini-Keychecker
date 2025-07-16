@@ -27,3 +27,4 @@ target
 
 *.txt
 *.bak
+config.toml
