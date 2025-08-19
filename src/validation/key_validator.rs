@@ -4,7 +4,7 @@ use tracing::{debug, error, info, warn};
 use super::{CACHE_CONTENT_TEST_BODY, GENERATE_CONTENT_TEST_BODY};
 use crate::config::KeyCheckerConfig;
 use crate::error::ValidatorError;
-use crate::types::{GeminiKey, ValidatedKey};
+use crate::types::{GeminiKey, KeyTier, ValidatedKey};
 use crate::utils::send_request;
 
 pub async fn test_generate_content_api(
@@ -29,19 +29,26 @@ pub async fn test_generate_content_api(
                 "BASIC API VALID - {}... - Passed generate content API test",
                 &api_key.as_ref()[..10]
             );
-            Ok(ValidatedKey::new(api_key))
+            Ok(ValidatedKey::new(api_key, KeyTier::Free))
         }
         Err(e) => match &e {
             ValidatorError::HttpBadRequest { .. }
             | ValidatorError::HttpUnauthorized { .. }
-            | ValidatorError::HttpForbidden { .. }
-            | ValidatorError::HttpTooManyRequests { .. } => {
+            | ValidatorError::HttpForbidden { .. } => {
                 warn!(
                     "INVALID - {}... - {}",
                     &api_key.as_ref()[..10],
                     ValidatorError::KeyInvalid
                 );
-                Err(ValidatorError::KeyInvalid)
+                Ok(ValidatedKey::new(api_key, KeyTier::Invalid))
+            }
+            ValidatorError::HttpTooManyRequests { .. } => {
+                warn!(
+                    "RATE LIMITED - {}... - {}",
+                    &api_key.as_ref()[..10],
+                    ValidatorError::KeyRateLimited
+                );
+                Ok(ValidatedKey::new(api_key, KeyTier::RateLimited))
             }
             _ => {
                 error!("ERROR-  {}... - {}", &api_key.as_ref()[..10], e);
@@ -72,7 +79,7 @@ pub async fn test_cache_content_api(
                 "PAID KEY DETECTED - {}... - Cache API accessible",
                 &validated_key.key.as_ref()[..10]
             );
-            validated_key.with_paid_tier()
+            ValidatedKey::new(validated_key.key, KeyTier::Paid)
         }
         Err(e) => match &e {
             ValidatorError::HttpTooManyRequests { .. } => {

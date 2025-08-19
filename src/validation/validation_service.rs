@@ -84,18 +84,26 @@ impl ValidationService {
         // Open output files for writing keys by tier (fixed filenames)
         let free_keys_path = "freekey.txt";
         let paid_keys_path = "paidkey.txt";
+        let invalid_keys_path = "invalid.txt";
+        let rate_limited_keys_path = "ratelimited.txt";
 
         let free_file = fs::File::create(&free_keys_path).await?;
         let paid_file = fs::File::create(&paid_keys_path).await?;
+        let invalid_file = fs::File::create(&invalid_keys_path).await?;
+        let rate_limited_file = fs::File::create(&rate_limited_keys_path).await?;
 
         let mut free_buffer_writer = tokio::io::BufWriter::new(free_file);
         let mut paid_buffer_writer = tokio::io::BufWriter::new(paid_file);
+        let mut invalid_buffer_writer = tokio::io::BufWriter::new(invalid_file);
+        let mut rate_limited_buffer_writer = tokio::io::BufWriter::new(rate_limited_file);
 
         // Process validated keys and write to appropriate tier files
         while let Some(valid_key) = valid_keys_stream.next().await {
             if let Err(e) = write_validated_key_to_tier_files(
                 &mut free_buffer_writer,
                 &mut paid_buffer_writer,
+                &mut invalid_buffer_writer,
+                &mut rate_limited_buffer_writer,
                 &valid_key,
             )
             .await
@@ -107,6 +115,8 @@ impl ValidationService {
         // Flush both buffers to ensure all data is written to files
         free_buffer_writer.flush().await?;
         paid_buffer_writer.flush().await?;
+        invalid_buffer_writer.flush().await?;
+        rate_limited_buffer_writer.flush().await?;
 
         std::mem::drop(progress_span_enter);
         std::mem::drop(progress_span);

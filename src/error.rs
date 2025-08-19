@@ -26,6 +26,9 @@ pub enum ValidatorError {
     #[error("Key is unavailable or invalid")]
     KeyInvalid,
 
+    #[error("Key has exceeded its rate limit")]
+    KeyRateLimited,
+
     #[error("Invalid Google API key format: {0}")]
     KeyFormatInvalid(String),
 

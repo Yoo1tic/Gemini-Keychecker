@@ -9,20 +9,18 @@ use tracing::info;
 pub async fn write_validated_key_to_tier_files(
     free_file: &mut BufWriter<tokio::fs::File>,
     paid_file: &mut BufWriter<tokio::fs::File>,
+    invalid_file: &mut BufWriter<tokio::fs::File>,
+    rate_limited_file: &mut BufWriter<tokio::fs::File>,
     validated_key: &ValidatedKey,
 ) -> Result<(), ValidatorError> {
-    match validated_key.tier {
-        KeyTier::Free => {
-            free_file
-                .write_all(format!("{}\n", validated_key.key.as_ref()).as_bytes())
-                .await?;
-        }
-        KeyTier::Paid => {
-            paid_file
-                .write_all(format!("{}\n", validated_key.key.as_ref()).as_bytes())
-                .await?;
-        }
-    }
+    let file = match validated_key.tier {
+        KeyTier::Free => free_file,
+        KeyTier::Paid => paid_file,
+        KeyTier::Invalid => invalid_file,
+        KeyTier::RateLimited => rate_limited_file,
+    };
+    file.write_all(format!("{}\n", validated_key.key.as_ref()).as_bytes())
+        .await?;
     Ok(())
 }
 
