@@ -112,8 +112,8 @@ impl ValidationService {
 
         // Spawn task to process invalid keys stream
         tokio::spawn(async move {
-            let mut pinned_stream = Box::pin(invalid_stream);
-            while let Some(invalid_key) = pinned_stream.next().await {
+            pin_mut!(invalid_stream);
+            while let Some(invalid_key) = invalid_stream.next().await {
                 if let Err(e) = write_key_into_file(&mut invalid_buffer_writer, &invalid_key).await
                 {
                     error!("Failed to write invalid key to file: {e}");
